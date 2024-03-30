@@ -342,9 +342,33 @@ head(final_df)
 
 
 ```{r}
-nba_api |> 
-  right_join(final_df, join_by(GAME_DATE == date_game, TEAM_NAME == home_team_name))
+str_replace_all(nba_api$TEAM_NAME, "LA Clippers", "Los Angeles Clippers")
 
 
+home2023_24 <- nba_api |> 
+  right_join(final_df, join_by(GAME_DATE == date_game, TEAM_NAME == home_team_name)) |> 
+    rename(opposition = visitor_team_name) 
+
+
+away2023_24 <- nba_api |> 
+  right_join(final_df, join_by(GAME_DATE == date_game, TEAM_NAME == visitor_team_name)) |> 
+  rename(opposition = home_team_name) |> 
+  relocate(32, .before = 31)
+
+names(home2023_24) == names(away2023_24)
+
+combined <- rbind(home2023_24, away2023_24)
+
+```
+
+```{r}
+#Sample code to find monthly averages
+
+
+
+
+combined |> 
+  filter(format(GAME_DATE, "%m") == "03") |> 
+  group_by(TEAM_NAME) 
 ```
 
