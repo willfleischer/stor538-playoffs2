@@ -1,0 +1,63 @@
+---
+title: "Injuries"
+author: "Ethan Turner"
+date: "2024-04-02"
+output: html_document
+---
+
+Source: Pro Sports Transactions
+
+https://www.prosportstransactions.com/basketball/Search/SearchResults.php?Player=&Team=&BeginDate=2023-10-01&EndDate=2024-04-01&InjuriesChkBx=yes&Submit=Search&start=550
+
+```{r}
+library(rvest)
+library(lubridate)
+library(tidyverse)
+
+
+```
+
+```{r}
+injuries <- data.frame()
+```
+
+
+```{r}
+for (i in 1:25) {
+  x = (25*i) - 25
+  url <- paste0("https://www.prosportstransactions.com/basketball/Search/SearchResults.php?Player=&Team=&BeginDate=2023-10-01&EndDate=2024-04-01&InjuriesChkBx=yes&Submit=Search&start=", x)
+  webpage <- read_html(url)
+  
+  data_1 <- webpage %>%
+  html_nodes("tr") %>%
+  html_text()
+  
+  df <- data.frame(Column_1 = data_1)
+  
+  split_values <- strsplit(df$Column_1, "  ")
+
+
+max_length <- max(sapply(split_values, length))
+
+split_values <- lapply(split_values, function(x) c(x, rep(NA, max_length - length(x))))
+
+df_split <- data.frame(do.call(rbind, split_values))
+
+
+colnames(df_split) <- c("Date", "Team", "Acquired", "Relinquished", "Notes")
+
+injuries <- rbind(injuries, df_split)
+
+
+
+}
+
+```
+
+```{r}
+injuries[-1,] |> 
+  select(1:5)
+```
+
+
+
