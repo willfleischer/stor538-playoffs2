@@ -55,8 +55,15 @@ injuries <- rbind(injuries, df_split)
 ```
 
 ```{r}
-injuries[-1,] |> 
+injuries <- injuries[-1,] |> 
   select(1:5)
+
+injuries$Date = str_replace_all(injuries$Date, "\r\n", "")
+injuries$Team = str_replace_all(injuries$Team, "\r\n", "")
+injuries$Acquired = str_replace_all(injuries$Acquired, "\r\n", "")
+injuries$Relinquished = str_replace_all(injuries$Relinquished, "\r\n", "")
+injuries$Notes = str_replace_all(injuries$Notes, "\r\n", "")
+
 ```
 
 
