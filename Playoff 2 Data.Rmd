@@ -417,7 +417,7 @@ game_stats
 ```
 
 ```{r}
-# Splitting the data into training and testing sets (simplified example)
+# Splitting the data into training and testing sets 
 set.seed(123)
 training_indices <- sample(seq_len(nrow(game_stats)), size = floor(0.8 * nrow(game_stats)))
 training_data <- game_stats[training_indices, ]
@@ -436,7 +436,44 @@ print(paste("Mean Absolute Error:", mae))
 
 ```
 
-```{r}
 
+```{r}
+game_stats <- game_stats %>%
+  mutate(
+    # Shooting Efficiency: Points per Field Goal Attempt and Free Throw Attempt
+    SE = PTS / (FGA + 0.44 * FTA), # The 0.44 factor adjusts for and-one's, technical foul shots, and three-shot fouls
+    
+    # Defensive Pressure: Combining Steals and Blocks
+    DP = (STL + BLK) / MIN, # Normalized by minutes played
+    
+    # Opponent Scoring Efficiency needs opponent stats; for simplicity, let's assume it's calculated
+    # This step is skipped here due to its complexity, as it would require merging team stats on each game
+    
+    # Home Advantage as a binary variable
+    Home = ifelse(grepl("vs", MATCHUP), 1, 0)
+  )
+
+# Prepare for modeling: Remove any rows with NAs created during feature engineering
+game_stats <- na.omit(game_stats)
+game_stats$Pace = (game_stats$FGA + 0.44 * game_stats$FTA + game_stats$TOV + game_stats$OREB) / game_stats$MIN
+
+game_stats
 ```
+
+```{r}
+# Assuming 'game_stats' is your data frame and already includes SE and DP
+
+# Calculate min and max for Shooting Efficiency (SE)
+min_SE <- min(game_stats$SE, na.rm = TRUE)
+max_SE <- max(game_stats$SE, na.rm = TRUE)
+
+# Calculate min and max for Defensive Pressure (DP)
+min_DP <- min(game_stats$DP, na.rm = TRUE)
+max_DP <- max(game_stats$DP, na.rm = TRUE)
+
+# Print the results
+print(paste("Min SE:", min_SE, "- Max SE:", max_SE))
+print(paste("Min DP:", min_DP, "- Max DP:", max_DP))
+```
+
 
