@@ -1,4 +1,4 @@
-#THIS USES THE API FILE
+THIS USES THE API FILE (also on Github)
 
 
 ```{r}
@@ -344,7 +344,8 @@ head(final_df)
 
 
 ```{r}
-str_replace_all(nba_api$TEAM_NAME, "LA Clippers", "Los Angeles Clippers")
+nba_api$TEAM_NAME = str_replace_all(nba_api$TEAM_NAME, "LA Clippers", "Los Angeles Clippers")
+
 
 
 home2023_24 <- nba_api |> 
@@ -366,11 +367,21 @@ combined <- rbind(home2023_24, away2023_24)
 ```{r}
 #Sample code to find monthly averages
 
-
+library(tidyverse)
 
 
 combined |> 
-  filter(format(GAME_DATE, "%m") == "03") |> 
-  group_by(TEAM_NAME) 
+  filter(format(GAME_DATE, "%m") == "02") |> 
+  group_by(TEAM_NAME) |> 
+  summarise(mean(OREB))
+
+combined |> 
+  filter(format(GAME_DATE, "%m") == "02") |> 
+    group_by(opposition) |> 
+  summarise(mean(DREB))
+  
+
+
+  
 ```
 
