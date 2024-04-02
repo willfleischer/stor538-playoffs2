@@ -384,7 +384,7 @@ library(dplyr)
 library(readr)
 
 # Load the dataset
-game_stats <- nba_api
+game_stats <- combined
 
 # Inspect the dataset
 head(game_stats)
@@ -392,7 +392,6 @@ head(game_stats)
 ```
 
 ```{r}
-# Assuming 'game_stats' includes columns for team, opponent team, game date, and necessary stats
 
 # Calculate Team Shooting Percentage
 game_stats <- game_stats %>%
@@ -406,13 +405,10 @@ game_stats <- game_stats %>%
   mutate(Avg_OREB = mean(OREB, na.rm = TRUE))
 
 # Opposition Team's Historic DREB (this would require a bit more complex logic to calculate historically for each game)
-# For simplification, let's calculate the average DREB for the season
 game_stats <- game_stats %>%
   group_by(MATCHUP) %>%
   mutate(Opponent_Avg_DREB = mean(DREB, na.rm = TRUE))
 
-# Since calculating the tendencies of different players on teams might be too specific and complex for this example,
-# we'll proceed with the above features for the model.
 game_stats
 ```
 
@@ -446,9 +442,6 @@ game_stats <- game_stats %>%
     # Defensive Pressure: Combining Steals and Blocks
     DP = (STL + BLK) / MIN, # Normalized by minutes played
     
-    # Opponent Scoring Efficiency needs opponent stats; for simplicity, let's assume it's calculated
-    # This step is skipped here due to its complexity, as it would require merging team stats on each game
-    
     # Home Advantage as a binary variable
     Home = ifelse(grepl("vs", MATCHUP), 1, 0)
   )
@@ -456,24 +449,28 @@ game_stats <- game_stats %>%
 # Prepare for modeling: Remove any rows with NAs created during feature engineering
 game_stats <- na.omit(game_stats)
 game_stats$Pace = (game_stats$FGA + 0.44 * game_stats$FTA + game_stats$TOV + game_stats$OREB) / game_stats$MIN
+# Estimate possessions based on available stats
+game_stats$Possessions <- with(game_stats, 0.96 * (FGA + 0.44 * FTA - OREB + TOV))
+
+# Calculate ORtg and DRtg
+game_stats <- game_stats %>%
+  mutate(ORtg = 100 * PTS / Possessions,
+         DRtg = 100 * ifelse(Home == 1, visitor_pts, home_pts) / Possessions)
 
 game_stats
 ```
 
 ```{r}
-# Assuming 'game_stats' is your data frame and already includes SE and DP
+# Assuming 'home_prior_form' and 'visitor_prior_form' are encoded in a win-loss format (e.g., "WWL")
+game_stats$HomeFormScore <- stringr::str_count(game_stats$home_prior_form, "W") - stringr::str_count(game_stats$home_prior_form, "L")
+game_stats$VisitorFormScore <- stringr::str_count(game_stats$visitor_prior_form, "W") - stringr::str_count(game_stats$visitor_prior_form, "L")
 
-# Calculate min and max for Shooting Efficiency (SE)
-min_SE <- min(game_stats$SE, na.rm = TRUE)
-max_SE <- max(game_stats$SE, na.rm = TRUE)
+game_stats$FormDiff <- game_stats$HomeFormScore - game_stats$VisitorFormScore
+game_stats <- game_stats %>%
+  select(-game_start_time, -home_prior_form, -visitor_prior_form) %>%
+  na.omit()
+game_stats
 
-# Calculate min and max for Defensive Pressure (DP)
-min_DP <- min(game_stats$DP, na.rm = TRUE)
-max_DP <- max(game_stats$DP, na.rm = TRUE)
-
-# Print the results
-print(paste("Min SE:", min_SE, "- Max SE:", max_SE))
-print(paste("Min DP:", min_DP, "- Max DP:", max_DP))
 ```
 
 
