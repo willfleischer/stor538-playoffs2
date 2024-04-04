@@ -461,16 +461,137 @@ game_stats
 ```
 
 ```{r}
-# Assuming 'home_prior_form' and 'visitor_prior_form' are encoded in a win-loss format (e.g., "WWL")
 game_stats$HomeFormScore <- stringr::str_count(game_stats$home_prior_form, "W") - stringr::str_count(game_stats$home_prior_form, "L")
 game_stats$VisitorFormScore <- stringr::str_count(game_stats$visitor_prior_form, "W") - stringr::str_count(game_stats$visitor_prior_form, "L")
-
+game_stats$TS = game_stats$AST * game_stats$FG_PCT
+#Team Synergy (TS): A metric to quantify the effectiveness of a team's collaboration, which might not be directly observable through traditional stats. It can be approximated by the interaction between assists and shooting percentage, assuming higher synergy leads to more efficient scoring opportunities.#
 game_stats$FormDiff <- game_stats$HomeFormScore - game_stats$VisitorFormScore
 game_stats <- game_stats %>%
   select(-game_start_time, -home_prior_form, -visitor_prior_form) %>%
   na.omit()
+game_stats <- game_stats %>%
+  mutate(Spread = ifelse(Home == 1, home_pts - visitor_pts, visitor_pts - home_pts),
+         Total = home_pts + visitor_pts)
 game_stats
 
 ```
 
+```{r}
+library(tidyverse)
+library(caret)
+library(lubridate)
+library(randomForest)
+library(neuralnet)
+```
 
+```{r}
+set.seed(123)
+model_spread_2 <- randomForest(Spread ~ ORtg + DRtg + Pace + DP + FormDiff, data = game_stats)
+print(model_spread_2)
+```
+```{r}
+team_stats_for_prediction <- data.frame(
+  ORtg = 110,
+  DRtg = 105,
+  Pace = 95,
+  DP = 0.2,
+  FormDiff = 3
+)
+```
+
+```{r}
+predicted_spread <- predict(model_spread_2, newdata = team_stats_for_prediction)
+
+print(predicted_spread)
+```
+
+```{r}
+set.seed(123)
+advanced_rf_model <- randomForest(Spread ~ ORtg + DRtg + Pace + DP + FormDiff + TS, data = game_stats, ntree = 500, mtry = 4, importance = TRUE)
+print(advanced_rf_model)
+
+```
+
+Mean of Squared Residuals (MSR): The MSR value is 2.557157, which is relatively low. This metric represents the average of the squared differences between the observed actual outcomes and the predictions made by the model. A lower MSR indicates that the model's predictions are, on average, very close to the actual game spreads, suggesting high accuracy in the predictions.
+
+Percentage of Variance Explained: The model explains 98.96% of the variance in the Spread, which is exceptionally high. This metric reflects the model's ability to capture the underlying patterns and relationships in the data that contribute to the outcome variable. A value this high suggests that the model is highly effective at predicting game spreads based on the selected predictors.
+
+Interpretation
+Predictive Power: The model's high percentage of variance explained, coupled with the low mean of squared residuals, indicates that it is extremely effective at predicting the spread of NBA games. This suggests that the combination of variables used, including both individual performance metrics like ORtg and DRtg, as well as team dynamics indicators like TS, provides a comprehensive set of predictors for understanding game outcomes in terms of spread.
+
+Variable Selection: The choice to include variables such as ORtg, DRtg, and Pace aligns with conventional wisdom about factors that influence game outcomes. The inclusion of DP and FormDiff captures aspects of defensive intensity and recent performance trends, respectively, which are intuitively relevant to predicting spreads. TS as a measure of team synergy introduces a novel aspect into the predictive model, implying that how well a team plays together (beyond individual stats) is crucial for game outcomes.
+
+Model Robustness: The configuration of the Random Forest, with a substantial number of trees and a thoughtful selection of variables at each split, likely contributes to its robustness and high explanatory power. The model benefits from Random Forest's inherent strengths, such as handling non-linear relationships and interactions between variables without explicit specification.
+
+Conclusion
+This Random Forest model demonstrates outstanding performance in predicting NBA game spreads, as evidenced by its near-perfect variance explanation and low mean squared residuals. The results suggest that the model, with its current configuration and variable selection, effectively captures the complexities and dynamics influencing NBA game outcomes.
+
+```{r}
+library(xgboost)
+# Prepare data for xgboost
+dtrain <- xgb.DMatrix(data = model.matrix(~ ORtg + DRtg + Pace + DP + FormDiff + TS - 1, data = game_stats), label = game_stats$Spread)
+set.seed(123)
+xgb_model <- xgb.train(data = dtrain, 
+                       booster = "gbtree", 
+                       objective = "reg:squarederror", 
+                       nrounds = 1000, 
+                       eta = 0.01,
+                       max_depth = 6)
+xgb.importance(model = xgb_model)
+
+
+```
+Interpretation of Each Feature's Importance:
+Offensive Rating (ORtg):
+
+Gain: With approximately 50.15% gain, ORtg is the most impactful feature in the model, significantly contributing to the model's predictive accuracy. This indicates that offensive efficiency is crucial for predicting game outcomes.
+Cover: ORtg also has a high cover value, suggesting it influences a large portion of the observations in the dataset.
+Frequency: Being used in 37% of splits, it's the most commonly selected feature for making decisions, highlighting its importance.
+Defensive Rating (DRtg):
+
+Gain: Nearly equal to ORtg in terms of gain, indicating that defensive efficiency is almost as critical as offensive efficiency in determining game outcomes.
+Cover: Slightly lower than ORtg but still very influential, affecting a considerable number of observations.
+Frequency: Used slightly less frequently than ORtg but still one of the top features for making splits.
+Pace:
+
+Gain: Minimal impact on model's predictive accuracy, indicating that the game's pace is not as crucial for predicting outcomes as the efficiency ratings.
+Cover: Moderate cover value suggests it affects a fair number of observations when used.
+Frequency: Despite its low gain, it's used relatively frequently, possibly indicating its role in interactions with other features or specific contexts.
+Team Synergy (TS):
+
+Gain: Lower than the efficiency ratings, implying it has a smaller but still meaningful contribution to model accuracy.
+Cover and Frequency: Lower values than ORtg and DRtg, indicating it's less influential but still relevant.
+Defensive Pressure (DP):
+
+Gain: Very low, suggesting minimal contribution to improving model accuracy.
+Cover and Frequency: Least among the features, reinforcing its minimal impact on the model.
+FormDiff:
+
+Gain: The lowest, indicating its contribution to model accuracy is negligible compared to other features.
+Cover and Frequency: Lowest values, suggesting it's rarely influential in the model.
+Overall Conclusion
+The model strongly emphasizes the critical roles of Offensive and Defensive Ratings (ORtg and DRtg) in predicting game outcomes, with both features dominating in terms of gain, cover, and frequency. This underscores the balance between a team's offensive and defensive capabilities as the primary determinants of game performance in the NBA.
+
+Pace, Team Synergy (TS), Defensive Pressure (DP), and Form Difference (FormDiff), while included, have significantly less impact on the model's predictions, with Pace being somewhat more frequently used despite its low gain. 
+
+```{r}
+game_stats$ShEff = (game_stats$FG_PCT + game_stats$FG3_PCT + game_stats$FT_PCT) / 3
+#Shooting Efficiency (ShEff): A composite metric combining field goal, three-point, and free throw percentages to capture overall shooting effectiveness.
+game_stats
+```
+
+```{r}
+game_stats$FTImpact <- with(game_stats, FTA * FT_PCT)
+#1. Free Throw Impact (FTImpact)- A measure combining free throw attempt rate and free throw percentage to assess the overall impact of free throws on the team's scoring.
+game_stats$ShootingVersatilityIndex <- with(game_stats, 0.4 * FG_PCT + 0.4 * FG3_PCT + 0.2 * FT_PCT)
+#2. Shooting Versatility Index (SVI)- This index aims to quantify a team's shooting versatility by combining field goal, three-point, and free throw percentages, giving higher weight to three-point efficiency.
+game_stats$BallMovementIndex <- with(game_stats, AST / FGM)
+#3. Ball Movement Index (BMI)- An index reflecting the team's ball movement, inferred from the ratio of assists to field goals made.
+game_stats$DefensiveDisruptionIndex <- with(game_stats, (STL + BLK) / Possessions * 100)
+#4. Defensive Disruption Index (DDI)- A composite measure reflecting the team's ability to disrupt the opponent's offense, calculated by combining steals and blocks relative to the number of possessions.
+game_stats$ClutchFactor <- ifelse(abs(game_stats$PLUS_MINUS) <= 5 & game_stats$MIN >= 43, 1, 0)
+#6. Clutch Factor (CF)- Designed to capture a team's performance in the clutch, defined as the last five minutes of a game with a point difference of 5 or less.
+game_stats$PaceAdjustedDefImpact <- with(game_stats, DRtg / Pace)
+#7. Pace Adjusted Defensive Impact (PADI)- Considers the defensive rating adjusted for the game's pace, offering insights into a team's defensive effectiveness relative to the game's speed.
+game_stats
+```
