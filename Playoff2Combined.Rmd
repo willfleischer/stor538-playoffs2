@@ -1,5 +1,3 @@
-THIS USES THE API FILE (also on Github)
-
 
 ```{r}
 library(readr)
@@ -156,8 +154,7 @@ for (i in 1:length(unique(regular_df$visitor_team_name))){
     filter(visitor_team_name == unique(regular_df$visitor_team_name)[i] | home_team_name == unique(regular_df$visitor_team_name)[i])
   
 
-for (j in 1:(nrow(adapted_df) - 1)) 
-  {
+for (j in 1:(nrow(adapted_df) - 1))
 
 adapted_df$home_team_name[j+1] == unique(regular_df$visitor_team_name)[i]
 
@@ -358,7 +355,6 @@ away2023_24 <- nba_api |>
   rename(opposition = home_team_name) |> 
   relocate(32, .before = 31)
 
-names(home2023_24) == names(away2023_24)
 
 combined <- rbind(home2023_24, away2023_24)
 
@@ -383,5 +379,184 @@ combined |>
 
 
   
+```
+
+
+```{r}
+# Load necessary libraries
+library(dplyr)
+library(readr)
+
+# Load the dataset
+game_stats <- combined
+
+# Inspect the dataset
+head(game_stats)
+
+```
+
+```{r}
+# Assuming 'game_stats' includes columns for team, opponent team, game date, and necessary stats
+
+# Calculate Team Shooting Percentage
+game_stats <- game_stats %>%
+  mutate(Shooting_Percentage = FGM / FGA) %>%
+  group_by(TEAM_NAME) %>%
+  mutate(Avg_Shooting_Percentage = mean(Shooting_Percentage, na.rm = TRUE))
+
+# Calculate Average OREB per Game
+game_stats <- game_stats %>%
+  group_by(TEAM_NAME) %>%
+  mutate(Avg_OREB = mean(OREB, na.rm = TRUE))
+
+# Opposition Team's Historic DREB (this would require a bit more complex logic to calculate historically for each game)
+# For simplification, let's calculate the average DREB for the season
+game_stats <- game_stats %>%
+  group_by(MATCHUP) %>%
+  mutate(Opponent_Avg_DREB = mean(DREB, na.rm = TRUE))
+
+# Since calculating the tendencies of different players on teams might be too specific and complex for this example,
+# we'll proceed with the above features for the model.
+game_stats
+```
+
+```{r}
+# Splitting the data into training and testing sets (simplified example)
+set.seed(123)
+training_indices <- sample(seq_len(nrow(game_stats)), size = floor(0.8 * nrow(game_stats)))
+training_data <- game_stats[training_indices, ]
+testing_data <- game_stats[-training_indices, ]
+
+# Build the model
+model <- lm(OREB ~ Avg_Shooting_Percentage + Avg_OREB + Opponent_Avg_DREB, data = training_data)
+
+# Summary of the model
+summary(model)
+
+# Predict and evaluate
+predictions <- predict(model, newdata = testing_data)
+mae <- mean(abs(predictions - testing_data$OREB))
+print(paste("Mean Absolute Error:", mae))
+
+```
+
+
+
+Source: Pro Sports Transactions
+
+https://www.prosportstransactions.com/basketball/Search/SearchResults.php?Player=&Team=&BeginDate=2023-10-01&EndDate=2024-04-01&InjuriesChkBx=yes&Submit=Search&start=550
+
+```{r}
+library(rvest)
+library(lubridate)
+library(tidyverse)
+
+
+```
+
+```{r}
+injuries <- data.frame()
+```
+
+
+```{r}
+for (i in 1:25) {
+  x = (25*i) - 25
+  url <- paste0("https://www.prosportstransactions.com/basketball/Search/SearchResults.php?Player=&Team=&BeginDate=2023-10-01&EndDate=2024-04-01&InjuriesChkBx=yes&Submit=Search&start=", x)
+  webpage <- read_html(url)
+  
+  data_1 <- webpage %>%
+  html_nodes("tr") %>%
+  html_text()
+  
+  df <- data.frame(Column_1 = data_1)
+  
+  split_values <- strsplit(df$Column_1, "  ")
+
+
+max_length <- max(sapply(split_values, length))
+
+split_values <- lapply(split_values, function(x) c(x, rep(NA, max_length - length(x))))
+
+df_split <- data.frame(do.call(rbind, split_values))
+
+
+colnames(df_split) <- c("Date", "Team", "Acquired", "Relinquished", "Notes")
+
+injuries <- rbind(injuries, df_split)
+
+
+
+}
+
+```
+
+```{r}
+injuries <- injuries[-1,] |> 
+  select(1:5)
+
+injuries$Date = str_replace_all(injuries$Date, "\r\n", "")
+injuries$Team = str_replace_all(injuries$Team, "\r\n", "")
+injuries$Acquired = str_replace_all(injuries$Acquired, "\r\n", "")
+injuries$Relinquished = str_replace_all(injuries$Relinquished, "\r\n", "")
+injuries$Notes = str_replace_all(injuries$Notes, "\r\n", "")
+
+
+toDelete <- seq(27, 614, 27)
+
+#Tried to clean, but not important right now
+
+
+seq(27, 614, 27)
+
+#injuries[-toDelete,][-toDelete,][-toDelete,]
+
+#  injuries <- injuries[-toDelete,]
+  
+  #Putting this twice b/c two problematic rows  
+ # injuries <- injuries[-toDelete,]
+
+
+```
+
+
+
+
+```{r}
+combined <- combined |> 
+  relocate(GAME_DATE) |> arrange(GAME_DATE)
+
+combined$team_mins_per_game_injured <- NA
+
+
+```
+
+
+Source: https://www.nbastuffer.com/2023-2024-nba-player-stats/
+
+```{r}
+injuries |> 
+  filter(Team == " Lakers")
+```
+
+Limitation: Clearly, does not take into account season-ending injuries if we only look at mins PG.
+
+```{r}
+combined <- combined |> 
+  arrange(TEAM_NAME, GAME_DATE)
+
+write.csv(combined, "C:/Users/ethantur/Documents/STOR538/injuries.csv")
+
+
+#I am counting on-day 
+
+
+```
+
+```{r}
+library(readr)
+read_csv("injuries.csv")
+
+
 ```
 
