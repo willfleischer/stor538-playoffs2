@@ -7,7 +7,7 @@ date: "2024-04-02"
 library(readr)
 
 
-nba_api <- read_csv("/Users/blakefuquay/Downloads/2019to2024nbagamestats.csv") 
+nba_api <- read_csv("/Users/ethantur/Documents/STOR538/2019to2024nbagamestats.csv") 
 
 head(nba_api)
 ```
@@ -27,7 +27,7 @@ library(tidyverse)
 ########
 year <- "2024"
 monthList <- c("october", "november", "december", "january", "february", 
-               "march")
+               "march", "april")
 playoff_startDate <- ymd("2024-04-20")
 outputfile <- "NBA-2024_game_data.rds"
 
@@ -371,11 +371,6 @@ combined <- rbind(home2023_24, away2023_24)
 #Sample code to find monthly averages
 
 
-
-
-combined |> 
-  filter(format(GAME_DATE, "%m") == "03") |> 
-  group_by(TEAM_NAME) 
 
 combined |> 
   filter(format(GAME_DATE, "%m") == "02") |> 
