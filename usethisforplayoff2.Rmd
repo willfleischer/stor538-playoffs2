@@ -525,20 +525,13 @@ game_stats
 
 ```
 
-
-
-```{r}
-spreadmodel <- lm(point_difference ~  Pace + ORtg + DRtg, data= game_stats)
-summary(spreadmodel)
-```
-
 ```{r}
 head(game_stats)
 ```
 
 
 ```{r}
-OREBmodel <- lm(OREB ~ sqrt(DREB) + average_treb + Possessions + Avg_Shooting_Percentage + average_treb + FTA + FGA + FG_PCT + FGM + TEAM_NAME + opposition + Pace + FTA*FGA + FGA*FGM, data = game_stats)
+OREBmodel <- lm(OREB ~ sqrt(DREB) + average_treb + Possessions + Avg_Shooting_Percentage + FTA + FG_PCT + FGM + TEAM_NAME + opposition + Pace + FTA*FGA + FGA*FGM, data = game_stats)
 summary(OREBmodel)
 ```
 
@@ -557,7 +550,7 @@ predict(OREBmodel, data = testing_data)
 
 ```{r}
 game_stats$TotalPts = game_stats$home_pts + game_stats$visitor_pts
-TotalPointsModel <- lm(TotalPts ~ TEAM_NAME + opposition + Pace + Possessions + Avg_Shooting_Percentage + FGA + FTA + FG3A + FG3M + FGA*FTA + FGA*FGM +FGM + ORtg + DRtg, data = game_stats)
+TotalPointsModel <- lm(TotalPts ~ TEAM_NAME + opposition + Pace + Possessions + Avg_Shooting_Percentage + FGA + FTA + FG3M + FGA*FTA + FGA*FGM +FGM + ORtg + DRtg, data = game_stats)
 summary(TotalPointsModel)
 ```
 
@@ -587,228 +580,6 @@ summary(TotalPointsModel)
 
 
 
-
-
-
-
-
-
-
-
-
-
-Source: Pro Sports Transactions
-
-https://www.prosportstransactions.com/basketball/Search/SearchResults.php?Player=&Team=&BeginDate=2023-10-01&EndDate=2024-04-01&InjuriesChkBx=yes&Submit=Search&start=550
-
-```{r}
-library(rvest)
-library(lubridate)
-library(tidyverse)
-
-
-```
-
-```{r}
-injuries <- data.frame()
-```
-
-
-```{r}
-for (i in 1:25) {
-  x = (25*i) - 25
-  url <- paste0("https://www.prosportstransactions.com/basketball/Search/SearchResults.php?Player=&Team=&BeginDate=2023-10-01&EndDate=2024-04-01&InjuriesChkBx=yes&Submit=Search&start=", x)
-  webpage <- read_html(url)
-  
-  data_1 <- webpage %>%
-  html_nodes("tr") %>%
-  html_text()
-  
-  df <- data.frame(Column_1 = data_1)
-  
-  split_values <- strsplit(df$Column_1, "  ")
-
-
-max_length <- max(sapply(split_values, length))
-
-split_values <- lapply(split_values, function(x) c(x, rep(NA, max_length - length(x))))
-
-df_split <- data.frame(do.call(rbind, split_values))
-
-
-colnames(df_split) <- c("Date", "Team", "Acquired", "Relinquished", "Notes")
-
-injuries <- rbind(injuries, df_split)
-
-
-
-}
-
-```
-
-```{r}
-injuries <- injuries[-1,] |> 
-  select(1:5)
-
-injuries$Date = str_replace_all(injuries$Date, "\r\n", "")
-injuries$Team = str_replace_all(injuries$Team, "\r\n", "")
-injuries$Acquired = str_replace_all(injuries$Acquired, "\r\n", "")
-injuries$Relinquished = str_replace_all(injuries$Relinquished, "\r\n", "")
-injuries$Notes = str_replace_all(injuries$Notes, "\r\n", "")
-
-
-toDelete <- seq(27, 614, 27)
-
-#Tried to clean, but not important right now
-
-
-seq(27, 614, 27)
-
-#injuries[-toDelete,][-toDelete,][-toDelete,]
-
-#  injuries <- injuries[-toDelete,]
-  
-  #Putting this twice b/c two problematic rows  
- # injuries <- injuries[-toDelete,]
-
-
-```
-
-
-
-
-```{r}
-combined <- combined |> 
-  relocate(GAME_DATE) |> arrange(GAME_DATE)
-
-combined$team_mins_per_game_injured <- NA
-
-
-```
-
-
-Source: https://www.nbastuffer.com/2023-2024-nba-player-stats/
-
-```{r}
-injuries |> 
-  filter(Team == " Lakers")
-```
-
-Limitation: Clearly, does not take into account season-ending injuries if we only look at mins PG.
-
-```{r}
-combined <- combined |> 
-  arrange(TEAM_NAME, GAME_DATE)
-
-write.csv(combined, "/Users/blakefuquay/Downloads/injuries.csv")
-
-
-#I am counting on-day 
-
-
-```
-
-```{r}
-library(readr)
-combined <- read_csv("/Users/blakefuquay/Downloads/injuries.csv")
-
-combined
-```
-
-```{r}
-# Load necessary libraries
-library(dplyr)
-library(readr)
-
-# Load the dataset
-game_stats <- combined
-
-# Inspect the dataset
-head(game_stats)
-
-```
-
-```{r}
-
-# Calculate Team Shooting Percentage
-game_stats <- game_stats %>%
-  mutate(Shooting_Percentage = FGM / FGA) %>%
-  group_by(TEAM_NAME) %>%
-  mutate(Avg_Shooting_Percentage = mean(Shooting_Percentage, na.rm = TRUE))
-
-# Calculate Average OREB per Game
-game_stats <- game_stats %>%
-  group_by(TEAM_NAME) %>%
-  mutate(Avg_OREB = mean(OREB, na.rm = TRUE))
-
-# Opposition Team's Historic DREB (this would require a bit more complex logic to calculate historically for each game)
-game_stats <- game_stats %>%
-  group_by(MATCHUP) %>%
-  mutate(Opponent_Avg_DREB = mean(DREB, na.rm = TRUE))
-
-game_stats
-```
-
-```{r}
-# Splitting the data into training and testing sets 
-set.seed(123)
-training_indices <- sample(seq_len(nrow(game_stats)), size = floor(0.8 * nrow(game_stats)))
-training_data <- game_stats[training_indices, ]
-testing_data <- game_stats[-training_indices, ]
-
-# Build the model
-model <- lm(OREB ~ Avg_Shooting_Percentage + Avg_OREB + Opponent_Avg_DREB, data = training_data)
-
-# Summary of the model
-summary(model)
-
-# Predict and evaluate
-predictions <- predict(model, newdata = testing_data)
-mae <- mean(abs(predictions - testing_data$OREB))
-print(paste("Mean Absolute Error:", mae))
-
-```
-
-
-```{r}
-game_stats <- game_stats %>%
-  mutate(
-    # Shooting Efficiency: Points per Field Goal Attempt and Free Throw Attempt
-    SE = PTS / (FGA + 0.44 * FTA), # The 0.44 factor adjusts for and-one's, technical foul shots, and three-shot fouls
-    
-    # Defensive Pressure: Combining Steals and Blocks
-    DP = (STL + BLK) / MIN, # Normalized by minutes played
-    
-    # Home Advantage as a binary variable
-    Home = ifelse(grepl("vs", MATCHUP), 1, 0)
-  )
-
-# Prepare for modeling: Remove any rows with NAs created during feature engineering
-game_stats <- na.omit(game_stats)
-game_stats$Pace = (game_stats$FGA + 0.44 * game_stats$FTA + game_stats$TOV + game_stats$OREB) / game_stats$MIN
-# Estimate possessions based on available stats
-game_stats$Possessions <- with(game_stats, 0.96 * (FGA + 0.44 * FTA - OREB + TOV))
-
-# Calculate ORtg and DRtg
-game_stats <- game_stats %>%
-  mutate(ORtg = 100 * PTS / Possessions,
-         DRtg = 100 * ifelse(Home == 1, visitor_pts, home_pts) / Possessions)
-
-game_stats
-```
-
-```{r}
-# Assuming 'home_prior_form' and 'visitor_prior_form' are encoded in a win-loss format (e.g., "WWL")
-game_stats$HomeFormScore <- stringr::str_count(game_stats$home_prior_form, "W") - stringr::str_count(game_stats$home_prior_form, "L")
-game_stats$VisitorFormScore <- stringr::str_count(game_stats$visitor_prior_form, "W") - stringr::str_count(game_stats$visitor_prior_form, "L")
-
-game_stats$FormDiff <- game_stats$HomeFormScore - game_stats$VisitorFormScore
-game_stats <- game_stats %>%
-  select(-game_start_time, -home_prior_form, -visitor_prior_form) %>%
-  na.omit()
-game_stats
-
-```
 
 
 
