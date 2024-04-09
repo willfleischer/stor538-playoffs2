@@ -555,7 +555,82 @@ summary(TotalPointsModel)
 ```
 
 
+#This is the code I used to make the OREB model table 
+```{r}
+library(knitr)
+library(kableExtra)
 
+
+summary_model <- summary(OREBmodel)
+
+# Extract summary values
+coefficients <- round(summary_model$coefficients, 4)
+r_squared <- summary_model$r.squared
+adj_r_squared <- summary_model$adj.r.squared
+f_statistic <- summary_model$fstatistic[1]
+p_value <- summary_model$fstatistic[2]
+
+# Create a pretty table
+tbl <- data.frame(
+  "Estimate" = coefficients[, 1],
+  "Standard Error" = coefficients[, 2],
+  "t value" = coefficients[, 3],
+  "P-Value" = coefficients[, 4]
+)
+
+# Add row names
+row.names(tbl) <- rownames(coefficients)
+
+# Add additional summary values
+tbl <- rbind(tbl, c("R-squared", "", "", round(r_squared, 4)))
+tbl <- rbind(tbl, c("Adjusted R-squared", "", "", round(adj_r_squared, 4)))
+tbl <- rbind(tbl, c("F-statistic", "", "", round(f_statistic, 2)))
+tbl <- rbind(tbl, c("p-value", "", "", format.pval(p_value, digits = 2)))
+
+# Create a pretty table using kableExtra
+kable_tbl <- kable(tbl, align = "c", caption = "Summary of Offensive Rebounds Model") %>%
+  kable_styling(full_width = FALSE)
+kable_tbl <- gsub("<table", "<table style='color: black;'", kable_tbl)
+kable_tbl
+as_image(kable_tbl, file = "OREB_model_summary.png")
+```
+
+
+#This is the code I used to make the table for the Total Points Model 
+```{r}
+summary_model <- summary(TotalPointsModel)
+
+# Extract summary values
+coefficients <- round(summary_model$coefficients, 4)
+r_squared <- summary_model$r.squared
+adj_r_squared <- summary_model$adj.r.squared
+f_statistic <- summary_model$fstatistic[1]
+p_value <- summary_model$fstatistic[2]
+
+# Create a pretty table
+tbl <- data.frame(
+  "Estimate" = coefficients[, 1],
+  "Standard Error" = coefficients[, 2],
+  "t value" = coefficients[, 3],
+  "P-Value" = coefficients[, 4]
+)
+
+# Add row names
+row.names(tbl) <- rownames(coefficients)
+
+# Add additional summary values
+tbl <- rbind(tbl, c("R-squared", "", "", round(r_squared, 4)))
+tbl <- rbind(tbl, c("Adjusted R-squared", "", "", round(adj_r_squared, 4)))
+tbl <- rbind(tbl, c("F-statistic", "", "", round(f_statistic, 2)))
+tbl <- rbind(tbl, c("p-value", "", "", format.pval(p_value, digits = 2)))
+
+# Create a pretty table using kableExtra
+kable_tbl <- kable(tbl, align = "c", caption = "Summary of Total Points Model") %>%
+  kable_styling(full_width = FALSE)
+kable_tbl <- gsub("<table", "<table style='color: black;'", kable_tbl)
+kable_tbl
+as_image(kable_tbl, file = "TotalPts_model_summary.png")
+```
 
 
 
