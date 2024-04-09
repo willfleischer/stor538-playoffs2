@@ -531,7 +531,8 @@ head(game_stats)
 
 
 ```{r}
-OREBmodel <- lm(OREB ~ sqrt(DREB) + average_treb + Possessions + Avg_Shooting_Percentage + FTA + FG_PCT + FGM + TEAM_NAME + opposition + Pace + FTA*FGA + FGA*FGM, data = game_stats)
+game_stats1 <- read_csv("/Users/blakefuquay/Downloads/game_stats_4_9.csv")
+OREBmodel <- lm(OREB ~ sqrt(DREB) + average_treb + Possessions + Avg_Shooting_Percentage  + FTA + FG_PCT + FGM + Pace + FTA*FGA + FGA*FGM, data = game_stats)
 summary(OREBmodel)
 ```
 
@@ -543,14 +544,11 @@ training_data <- game_stats[training_indices, ]
 testing_data <- game_stats[-training_indices, ]
 ```
 
-```{r}
-predict(OREBmodel, data = testing_data)
-```
 
 
 ```{r}
-game_stats$TotalPts = game_stats$home_pts + game_stats$visitor_pts
-TotalPointsModel <- lm(TotalPts ~ TEAM_NAME + opposition + Pace + Possessions + Avg_Shooting_Percentage + FGA + FTA + FG3M + FGA*FTA + FGA*FGM +FGM + ORtg + DRtg, data = game_stats)
+game_stats1$TotalPts = game_stats1$home_pts + game_stats1$visitor_pts
+TotalPointsModel <- lm(TotalPts ~ Pace + Possessions + FGA + FTA + FG3M + FGA*FTA + FGA*FGM +FGM + ORtg + DRtg, data = game_stats1)
 summary(TotalPointsModel)
 ```
 
